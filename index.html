@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEND IT — Interactive Conduit Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #111213;
+  --surface: #1c1e20;
+  --surface2: #252729;
+  --border: #333;
+  --yellow: #f0b429;
+  --yellow-glow: rgba(240,180,41,0.2);
+  --red: #e05c5c;
+  --green: #4caf7d;
+  --blue: #5b9bd5;
+  --text: #e0ddd8;
+  --dim: #666;
+  --pipe-body: #8a9bb0;
+  --pipe-shine: #b8c8d8;
+  --pipe-shadow: #3a4555;
+  --ruler-bg: #1e2018;
+  --ruler-tick: #555;
+  --mark-color: #f0b429;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow Condensed', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: sticky; top: 0; z-index: 200;
+}
+.logo {
+  font-family: 'Bebas Neue';
+  font-size: 1.9rem;
+  color: var(--yellow);
+  letter-spacing: 5px;
+}
+.logo em { color: var(--dim); font-style: normal; font-size: 0.75rem; letter-spacing: 3px; margin-left: 10px; font-family: 'Share Tech Mono'; }
+.hud { display: flex; gap: 20px; align-items: center; }
+.hud-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 4px 14px;
+  font-family: 'Share Tech Mono';
+  font-size: 0.85rem;
+  display: flex; gap: 8px; align-items: center;
+}
+.hud-pill .val { color: var(--yellow); font-size: 1.1rem; }
+
+/* ── BUTTONS ── */
+.btn {
+  font-family: 'Bebas Neue';
+  letter-spacing: 3px;
+  font-size: 1.2rem;
+  padding: 10px 28px;
+  border: 2px solid var(--yellow);
+  background: transparent;
+  color: var(--yellow);
+  cursor: pointer;
+  transition: all 0.12s;
+  position: relative; overflow: hidden;
+}
+.btn::after { content:''; position:absolute; inset:0; background:var(--yellow); transform:scaleX(0); transform-origin:left; transition:transform 0.12s; z-index:0; }
+.btn:hover::after { transform:scaleX(1); }
+.btn:hover { color: #111; }
+.btn > * { position: relative; z-index: 1; }
+.btn span { position: relative; z-index: 1; }
+.btn-sm { font-size: 0.9rem; padding: 6px 16px; }
+.btn-ghost { border-color: var(--border); color: var(--dim); }
+.btn-ghost::after { background: var(--border); }
+.btn-ghost:hover { color: var(--text); }
+.btn-green { border-color: var(--green); color: var(--green); }
+.btn-green::after { background: var(--green); }
+.btn-green:hover { color: #111; }
+.btn-red { border-color: var(--red); color: var(--red); }
+.btn-red::after { background: var(--red); }
+.btn-red:hover { color: #fff; }
+
+/* ══════════════════════════════════
+   TITLE SCREEN
+══════════════════════════════════ */
+#title {
+  justify-content: center; align-items: center;
+  gap: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(240,180,41,0.04) 0%, transparent 70%),
+    repeating-linear-gradient(-45deg, transparent 0, transparent 18px, rgba(255,255,255,0.015) 18px, rgba(255,255,255,0.015) 19px);
+}
+.title-wrap { text-align: center; }
+.title-eyebrow { font-family: 'Share Tech Mono'; font-size: 0.75rem; letter-spacing: 6px; color: var(--dim); margin-bottom: 12px; }
+.title-big {
+  font-family: 'Bebas Neue';
+  font-size: clamp(6rem, 20vw, 16rem);
+  line-height: 0.85;
+  color: var(--yellow);
+  letter-spacing: 10px;
+  text-shadow: 0 0 80px rgba(240,180,41,0.15), 4px 4px 0 #000;
+}
+.title-sub { font-family: 'Share Tech Mono'; font-size: 0.9rem; color: var(--dim); letter-spacing: 5px; margin: 16px 0 48px; }
+.title-pipe-deco {
+  width: 300px; height: 20px;
+  background: linear-gradient(90deg, transparent, var(--pipe-shadow) 15%, var(--pipe-body) 40%, var(--pipe-shine) 55%, var(--pipe-body) 70%, var(--pipe-shadow) 85%, transparent);
+  border-radius: 10px;
+  margin: 0 auto 40px;
+  position: relative;
+}
+.title-pipe-deco::after {
+  content: '';
+  position: absolute;
+  top: 4px; left: 20%; right: 20%; height: 5px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 3px;
+}
+.title-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.title-modes {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; max-width: 600px; margin: 0 auto 32px;
+}
+.mode-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mode-card:hover { border-color: var(--yellow); background: var(--surface2); }
+.mode-icon { font-size: 2rem; margin-bottom: 8px; }
+.mode-name { font-family: 'Bebas Neue'; font-size: 1.2rem; letter-spacing: 2px; color: var(--yellow); }
+.mode-desc { font-size: 0.8rem; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+
+/* ══════════════════════════════════
+   SIMULATOR SCREEN
+══════════════════════════════════ */
+#sim {
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.sim-layout {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* SCENARIO BAR */
+.scenario-bar {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.scenario-info { flex: 1; min-width: 200px; }
+.scenario-tag {
+  font-family: 'Share Tech Mono'; font-size: 0.7rem;
+  letter-spacing: 3px; color: var(--yellow); margin-bottom: 2px;
+}
+.scenario-name {
+  font-family: 'Bebas Neue'; font-size: 1.8rem; letter-spacing: 2px; line-height: 1;
+}
+.scenario-task { font-size: 1rem; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+.scenario-tools { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+
+/* PROGRESS */
+.q-counter { font-family: 'Share Tech Mono'; font-size: 0.8rem; color: var(--dim); letter-spacing: 2px; }
+.q-dots { display: flex; gap: 4px; margin-top: 4px; }
+.q-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.2s; }
+.q-dot.done { background: var(--green); }
+.q-dot.active { background: var(--yellow); }
+
+/* WORKSPACE */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  gap: 0;
+  overflow: hidden;
+  position: relative;
+  min-height: 320px;
+}
+
+/* THE PIPE CANVAS */
+.pipe-canvas-wrap {
+  width: 100%;
+  max-width: 900px;
+  position: relative;
+  user-select: none;
+}
+
+/* SCENE — where the result bend is shown */
+.scene-area {
+  width: 100%;
+  height: 200px;
+  position: relative;
+  margin-bottom: 8px;
+}
+.scene-area canvas, .scene-area svg {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+
+/* PIPE ROW — the straight pipe + ruler */
+.pipe-row {
+  width: 100%;
+  position: relative;
+  height: 90px;
+  cursor: crosshair;
+}
+
+/* Ruler */
+.ruler {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 36px;
+  background: var(--ruler-bg);
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+.ruler canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+/* Pipe itself */
+.pipe-visual {
+  position: absolute;
+  top: 18px;
+  left: 0; right: 0;
+  height: 32px;
+  pointer-events: none;
+}
+.pipe-visual canvas { position: absolute; top:0; left:0; width:100%; height:100%; }
+
+/* Marks layer */
+.marks-layer {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* Individual mark */
+.mark {
+  position: absolute;
+  top: 10px;
+  width: 3px;
+  height: 68px;
+  background: var(--mark-color);
+  transform: translateX(-1px);
+  cursor: ew-resize;
+  z-index: 10;
+  transition: background 0.1s;
+}
+.mark::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -22px;
+  left: 50%; transform: translateX(-50%);
+  font-family: 'Share Tech Mono';
+  font-size: 0.65rem;
+  color: var(--mark-color);
+  white-space: nowrap;
+  background: var(--bg);
+  padding: 1px 4px;
+  border: 1px solid var(--mark-color);
+}
+.mark::after {
+  content: attr(data-inches);
+  position: absolute;
+  bottom: -20px;
+  left: 50%; transform: translateX(-50%);
+  font-family: 'Share Tech Mono';
+  font-size: 0.75rem;
+  color: var(--yellow);
+  white-space: nowrap;
+}
+.mark:hover, .mark.dragging { background: #fff; width: 4px; }
+.mark.correct { background: var(--green); }
+.mark.wrong { background: var(--red); }
+.mark.correct::before { color: var(--green); border-color: var(--green); }
+.mark.wrong::before { color: var(--red); border-color: var(--red); }
+
+/* CONTROL PANEL */
+.control-panel {
+  background: var(--surface);
+  border-top: 2px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.feedback-box {
+  flex: 1; min-width: 200px;
+  background: var(--surface2);
+  border-left: 3px solid var(--border);
+  padding: 10px 14px;
+  font-family: 'Share Tech Mono';
+  font-size: 0.85rem;
+  color: var(--dim);
+  line-height: 1.6;
+  transition: border-color 0.2s;
+  min-height: 56px;
+}
+.feedback-box.good { border-color: var(--green); color: var(--green); }
+.feedback-box.bad  { border-color: var(--red);   color: var(--red);   }
+.feedback-box.hint { border-color: var(--yellow); color: var(--yellow); }
+.action-btns { display: flex; gap: 10px; }
+
+/* FORMULA STRIP */
+.formula-strip {
+  background: #0d0e0f;
+  border-top: 1px solid var(--border);
+  padding: 8px 24px;
+  display: flex;
+  gap: 24px;
+  font-family: 'Share Tech Mono';
+  font-size: 0.75rem;
+  color: var(--dim);
+  flex-wrap: wrap;
+  overflow-x: auto;
+}
+.formula-strip .f-item strong { color: var(--yellow); }
+
+/* BEND RESULT OVERLAY */
+.result-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 500;
+  display: none;
+  justify-content: center; align-items: center;
+}
+.result-overlay.show { display: flex; }
+.result-modal {
+  background: var(--surface);
+  border: 3px solid var(--yellow);
+  padding: 40px;
+  max-width: 480px; width: 90%;
+  text-align: center;
+}
+.result-big {
+  font-family: 'Bebas Neue';
+  font-size: 7rem;
+  line-height: 0.9;
+  color: var(--yellow);
+  text-shadow: 0 0 40px rgba(240,180,41,0.3);
+}
+.result-big.fail { color: var(--red); text-shadow: none; }
+.result-sub { font-family: 'Share Tech Mono'; font-size: 0.8rem; letter-spacing: 4px; color: var(--dim); margin-bottom: 20px; }
+.result-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 20px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 16px 0; }
+.rstat .v { font-family: 'Share Tech Mono'; font-size: 1.8rem; color: var(--yellow); }
+.rstat .l { font-size: 0.7rem; letter-spacing: 2px; color: var(--dim); }
+.result-msg { font-size: 1rem; color: var(--dim); line-height: 1.6; margin-bottom: 24px; }
+.result-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* TOOLTIP */
+.tooltip {
+  position: fixed;
+  background: var(--surface2);
+  border: 1px solid var(--yellow);
+  padding: 8px 12px;
+  font-family: 'Share Tech Mono';
+  font-size: 0.8rem;
+  color: var(--yellow);
+  pointer-events: none;
+  z-index: 300;
+  display: none;
+  white-space: nowrap;
+}
+
+/* BEND ANIMATION */
+@keyframes bendIn {
+  0% { opacity: 0; transform: scaleX(0.2); }
+  100% { opacity: 1; transform: scaleX(1); }
+}
+.bend-animated { animation: bendIn 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+/* SCORE POP */
+.score-pop {
+  position: fixed;
+  font-family: 'Bebas Neue';
+  font-size: 2.2rem;
+  pointer-events: none;
+  z-index: 600;
+  animation: popFloat 1.1s ease-out forwards;
+}
+@keyframes popFloat {
+  0%   { opacity:1; transform:translateY(0) scale(1); }
+  100% { opacity:0; transform:translateY(-70px) scale(1.4); }
+}
+
+@media (max-width: 600px) {
+  .title-big { font-size: 5rem; }
+  .title-modes { grid-template-columns: 1fr; }
+  .workspace { padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════
+  TITLE
+════════════════════════════════ -->
+<div id="title" class="screen active">
+  <div class="title-wrap" style="text-align:center; padding:60px 20px 0;">
+    <div class="title-eyebrow">CONDUIT BENDING SIMULATOR</div>
+    <div class="title-big">BEND IT</div>
+    <div class="title-pipe-deco"></div>
+    <div class="title-sub">Mark it. Bend it. Get it right.</div>
+    <div class="title-modes">
+      <div class="mode-card" onclick="startMode('stub')">
+        <div class="mode-icon">📐</div>
+        <div class="mode-name">90° Stub</div>
+        <div class="mode-desc">Take-up values &amp; first marks</div>
+      </div>
+      <div class="mode-card" onclick="startMode('offset')">
+        <div class="mode-icon">↕️</div>
+        <div class="mode-name">Offsets</div>
+        <div class="mode-desc">Multipliers, shrink, two marks</div>
+      </div>
+      <div class="mode-card" onclick="startMode('box')">
+        <div class="mode-icon">📦</div>
+        <div class="mode-name">Box Offset</div>
+        <div class="mode-desc">Flush box entry</div>
+      </div>
+      <div class="mode-card" onclick="startMode('saddle3')">
+        <div class="mode-icon">🌉</div>
+        <div class="mode-name">3-Bend Saddle</div>
+        <div class="mode-desc">Over an obstacle, 3 marks</div>
+      </div>
+      <div class="mode-card" onclick="startMode('saddle4')">
+        <div class="mode-icon">🏗️</div>
+        <div class="mode-name">4-Bend Saddle</div>
+        <div class="mode-desc">Wide obstacles, 4 marks</div>
+      </div>
+      <div class="mode-card" onclick="startMode('kick')">
+        <div class="mode-icon">↗️</div>
+        <div class="mode-name">Kicks</div>
+        <div class="mode-desc">Single kick & kick-90</div>
+      </div>
+    </div>
+    <div style="margin-top:8px; font-family:'Share Tech Mono'; font-size:0.75rem; color:var(--dim); letter-spacing:3px;">
+      DRAG YOUR MARK TO THE CORRECT POSITION ON THE PIPE
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+  SIMULATOR
+════════════════════════════════ -->
+<div id="sim" class="screen">
+  <header>
+    <div class="logo">BEND IT <em id="mode-label">STUB</em></div>
+    <div class="hud">
+      <div class="hud-pill"><span>Score</span><span class="val" id="h-score">0</span></div>
+      <div class="hud-pill"><span>Streak</span><span class="val" id="h-streak">0🔥</span></div>
+      <button class="btn btn-sm btn-ghost" onclick="goTitle()"><span>← Menu</span></button>
+    </div>
+  </header>
+
+  <div class="sim-layout" style="flex:1; display:flex; flex-direction:column;">
+
+    <!-- SCENARIO BAR -->
+    <div class="scenario-bar">
+      <div class="scenario-info">
+        <div class="scenario-tag" id="s-tag">STUB-UP</div>
+        <div class="scenario-name" id="s-name">Place your bend mark</div>
+        <div class="scenario-task" id="s-task">Loading...</div>
+      </div>
+      <div class="scenario-tools">
+        <div>
+          <div class="q-counter" id="q-cnt">Question 1 of 6</div>
+          <div class="q-dots" id="q-dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div class="workspace" id="workspace" style="flex:1;">
+      <div class="pipe-canvas-wrap" id="pcw">
+
+        <!-- SCENE: shows the environment (wall, box, obstacle) + result bend -->
+        <div class="scene-area" id="scene-area">
+          <canvas id="scene-canvas"></canvas>
+        </div>
+
+        <!-- PIPE ROW: the straight conduit with ruler and draggable marks -->
+        <div class="pipe-row" id="pipe-row">
+          <div class="pipe-visual"><canvas id="pipe-canvas"></canvas></div>
+          <div class="ruler"><canvas id="ruler-canvas"></canvas></div>
+          <div class="marks-layer" id="marks-layer"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FORMULA STRIP -->
+    <div class="formula-strip" id="formula-strip"></div>
+
+    <!-- CONTROL PANEL -->
+    <div class="control-panel">
+      <div class="feedback-box" id="feedback">
+        Drag the yellow mark(s) on the pipe to the correct position(s), then click <strong>Check</strong>.
+      </div>
+      <div class="action-btns">
+        <button class="btn btn-sm btn-ghost" onclick="showHint()"><span>💡 Hint</span></button>
+        <button class="btn btn-sm btn-green" onclick="checkMarks()"><span>✓ Check</span></button>
+        <button class="btn btn-sm btn-ghost" onclick="nextQ()"><span>Skip →</span></button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- RESULT OVERLAY -->
+<div class="result-overlay" id="result-overlay">
+  <div class="result-modal">
+    <div class="result-big" id="r-grade">A</div>
+    <div class="result-sub" id="r-rank">JOURNEYMAN MATERIAL</div>
+    <div class="result-stats">
+      <div class="rstat"><div class="v" id="r-score">0</div><div class="l">Score</div></div>
+      <div class="rstat"><div class="v" id="r-acc">0%</div><div class="l">Accuracy</div></div>
+      <div class="rstat"><div class="v" id="r-streak">0</div><div class="l">Best Streak</div></div>
+    </div>
+    <div class="result-msg" id="r-msg"></div>
+    <div class="result-btns">
+      <button class="btn btn-sm btn-ghost" onclick="goTitle()"><span>← Menu</span></button>
+      <button class="btn btn-sm" onclick="retryMode()"><span>↺ Retry</span></button>
+      <button class="btn btn-sm btn-green" onclick="closeResult()"><span>Continue</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════
+const PIPE_LENGTH_IN = 120; // show 10 feet of pipe
+const TOLERANCE_IN = 0.75;  // ¾" tolerance
+
+// Take-up values by size
+const TAKEUP = { '½"': 5, '¾"': 6, '1"': 8, '1¼"': 11 };
+
+// Offset multipliers / shrink per inch of rise
+const OFFSET = {
+  '22.5°': { mult: 2.6,  shrink: 3/32 },
+  '30°':   { mult: 2.0,  shrink: 3/16 },
+  '45°':   { mult: 1.41, shrink: 1/4  },
+  '60°':   { mult: 1.15, shrink: 1/2  }
+};
+
+// ══════════════════════════════════════════════════════
+// GAME STATE
+// ══════════════════════════════════════════════════════
+let G = {
+  mode: 'stub',
+  questions: [],
+  qIdx: 0,
+  score: 0,
+  streak: 0,
+  bestStreak: 0,
+  correct: 0,
+  checked: false,
+  marks: [],    // { id, xIn, el, answer, label, tolerance }
+  pipeW: 0,
+  hintUsed: false,
+};
+
+// ══════════════════════════════════════════════════════
+// QUESTION GENERATORS
+// ══════════════════════════════════════════════════════
+function r(a,b) { return a + Math.floor(Math.random()*(b-a+1)); }
+function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+function round2(n) { return Math.round(n*100)/100; }
+
+function genStubQs() {
+  const sizes = ['½"','¾"','1"'];
+  const heights = [12,14,16,18,20,24,30,36];
+  return shuffle(heights).slice(0,6).map(h => {
+    const size = pick(sizes);
+    const tu = TAKEUP[size];
+    const mark = h - tu;
+    return {
+      type:'stub', tag:'STUB-UP / 90°',
+      name: `${h}" Stub-Up`,
+      task: `You need a ${h}" stub into a panel using ${size} EMT. Place your bend mark from the END of the conduit.`,
+      marks: [{ label:'MARK', answer: mark, tolerance: TOLERANCE_IN }],
+      formula: `Mark = Stub height − Take-up = ${h}" − ${tu}" = <strong>${mark}"</strong>`,
+      formulaStrip: [
+        { k:'Take-up ½"', v:'5"' }, { k:'Take-up ¾"', v:'6"' },
+        { k:'Take-up 1"', v:'8"' }, { k:'Take-up 1¼"', v:'11"' }
+      ],
+      hint: `${size} EMT take-up = ${tu}". Mark at ${mark}" from the box end.`,
+      scene: { type:'stub', height:h, size }
+    };
+  });
+}
+
+function genOffsetQs() {
+  const angles = ['22.5°','30°','45°','60°'];
+  const rises = [3,4,5,6,8,10];
+  return shuffle(rises).slice(0,6).map(rise => {
+    const ang = pick(angles);
+    const { mult, shrink } = OFFSET[ang];
+    const dist = round2(rise * mult);
+    // Mark 1 from the end, Mark 2 = Mark1 + dist
+    // Place mark 1 at a reasonable start point (e.g. 20")
+    const m1 = 20;
+    const m2 = round2(m1 + dist);
+    return {
+      type:'offset', tag:'OFFSET',
+      name: `${ang} Offset — ${rise}" Rise`,
+      task: `Lay a ${ang} offset with a ${rise}" rise. Mark 1 is already set at 20". Drag Mark 2 to the correct position.`,
+      marks: [
+        { label:'MARK 1', answer: m1, tolerance: 0, fixed: true },
+        { label:'MARK 2', answer: m2, tolerance: TOLERANCE_IN }
+      ],
+      formula: `Mark spacing = Rise × ${mult} = ${rise}" × ${mult} = <strong>${dist}"</strong>  |  Shrink = ${rise}" × ${round2(shrink)}" = <strong>${round2(rise*shrink)}"</strong>`,
+      formulaStrip: Object.entries(OFFSET).map(([k,v])=>({ k:`${k} mult`, v:`${v.mult}` })).concat(
+        Object.entries(OFFSET).map(([k,v])=>({ k:`${k} shrink/in`, v:`${round2(v.shrink)}"` }))
+      ),
+      hint: `Mark 2 goes ${dist}" from Mark 1. So: 20" + ${dist}" = ${m2}" from the end.`,
+      scene: { type:'offset', rise, angle: ang }
+    };
+  });
+}
+
+function genBoxQs() {
+  const scenarios = [
+    { size:'½"', shrink: 3/16, desc:'½" EMT entering a 4" deep box' },
+    { size:'¾"', shrink: 1/4,  desc:'¾" EMT entering a standard box' },
+  ];
+  const base = [20,22,24,26,28,30];
+  return shuffle(base).slice(0,6).map(endIn => {
+    const sc = pick(scenarios);
+    const m1 = endIn;
+    const m2 = round2(endIn + 3.5);
+    return {
+      type:'box', tag:'BOX OFFSET',
+      name: 'Box Offset',
+      task: `${sc.desc}. The box end is at ${endIn}". Place BOTH marks for the box offset (~3–4" apart).`,
+      marks: [
+        { label:'MARK 1', answer: m1, tolerance: 1 },
+        { label:'MARK 2', answer: m2, tolerance: 1 }
+      ],
+      formula: `Two small bends 3–4" apart near the box. Shrinkage ≈ <strong>${sc.shrink}"</strong>`,
+      formulaStrip: [{ k:'Box offset spacing', v:'3–4"' },{ k:'½" shrink',v:'3/16"' },{ k:'¾" shrink',v:'¼"' }],
+      hint: `Place Mark 1 right at the box end (${m1}"), Mark 2 about 3.5" away at ${m2}".`,
+      scene: { type:'box', endIn }
+    };
+  });
+}
+
+function genSaddle3Qs() {
+  const obstacles = [2,3,4,5];
+  const centers = [40,45,50,55,60,65];
+  return shuffle(centers).slice(0,6).map(center => {
+    const obs = pick(obstacles);
+    const shrink = round2(obs * 3/16);
+    const adjCenter = round2(center - shrink);
+    return {
+      type:'saddle3', tag:'3-BEND SADDLE',
+      name: `3-Bend Saddle — ${obs}" Pipe`,
+      task: `A ${obs}" pipe crosses your run at ${center}" from the end. Place 3 marks: adjusted center and the two outer bends (6" each side).`,
+      marks: [
+        { label:'OUTER 1', answer: round2(adjCenter - 6), tolerance: TOLERANCE_IN },
+        { label:'CENTER',  answer: adjCenter,             tolerance: TOLERANCE_IN },
+        { label:'OUTER 2', answer: round2(adjCenter + 6), tolerance: TOLERANCE_IN }
+      ],
+      formula: `Shrink = ${obs}" × 3/16 = <strong>${shrink}"</strong>  |  Adj. center = ${center}" − ${shrink}" = <strong>${adjCenter}"</strong>  |  Outers = ±6"`,
+      formulaStrip: [{ k:'Center bend', v:'45°' },{ k:'Outer bends', v:'22.5° each' },{ k:'Spacing', v:'6" each side' },{ k:'Shrink/in', v:'3/16"' }],
+      hint: `Adjust center: ${center} − ${shrink} = ${adjCenter}". Outer 1 = ${adjCenter-6}", Outer 2 = ${adjCenter+6}".`,
+      scene: { type:'saddle3', center, obs }
+    };
+  });
+}
+
+function genSaddle4Qs() {
+  const widths = [6,8,10,12];
+  const rises = [3,4,5];
+  const starts = [20,25,30];
+  return Array.from({length:6}, (_,i) => {
+    const w = pick(widths);
+    const rise = pick(rises);
+    const start = pick(starts);
+    const leg = round2(rise * 2.0);
+    const m1 = start;
+    const m2 = round2(m1 + leg);
+    const m3 = round2(m2 + w);
+    const m4 = round2(m3 + leg);
+    return {
+      type:'saddle4', tag:'4-BEND SADDLE',
+      name: `4-Bend Saddle — ${w}" Wide`,
+      task: `4-bend saddle over a ${w}" wide obstacle, ${rise}" rise. Starting at ${start}" from box end. Place all 4 marks.`,
+      marks: [
+        { label:'A', answer: m1, tolerance: TOLERANCE_IN },
+        { label:'B', answer: m2, tolerance: TOLERANCE_IN },
+        { label:'C', answer: m3, tolerance: TOLERANCE_IN },
+        { label:'D', answer: m4, tolerance: TOLERANCE_IN }
+      ],
+      formula: `Leg = Rise × 2.0 = ${rise} × 2 = <strong>${leg}"</strong>  |  A=${m1}  B=${m2}  C=${m3}  D=${m4}`,
+      formulaStrip: [{ k:'All bends', v:'30°' },{ k:'Multiplier (30°)', v:'2.0' },{ k:'Leg = rise × 2', v:'' },{ k:'Width between B & C', v:`${w}"` }],
+      hint: `A=${m1}", B=${m2}", C=${m3}", D=${m4}". All 4 bends at 30°.`,
+      scene: { type:'saddle4', start, w, rise }
+    };
+  });
+}
+
+function genKickQs() {
+  const TAN = { '22.5°':0.414, '30°':0.577, '45°':1.0 };
+  const rises = [6,8,10,12];
+  const qs = [];
+  for (let rise of rises) {
+    const ang = pick(['22.5°','30°','45°']);
+    const run = round2(rise / TAN[ang]);
+    const m1 = round2(30 - run);  // from box end (box is at 30" mark)
+    qs.push({
+      type:'kick', tag:'KICK',
+      name: `${ang} Kick — ${rise}" Rise`,
+      task: `${ang} kick with a ${rise}" rise. The box entry is at 30". Place the kick mark on the pipe.`,
+      marks: [{ label:'KICK', answer: Math.max(2, m1), tolerance: TOLERANCE_IN }],
+      formula: `Run = Rise ÷ tan(${ang}) = ${rise} ÷ ${TAN[ang]} = <strong>${run}"</strong>  →  Mark at 30" − ${run}" = <strong>${round2(30-run)}"</strong>`,
+      formulaStrip: [{ k:'tan(22.5°)', v:'0.414' },{ k:'tan(30°)', v:'0.577' },{ k:'tan(45°)', v:'1.0' }],
+      hint: `Run = ${rise} ÷ ${TAN[ang]} = ${run}". Mark at ${Math.max(2,round2(30-run))}" from end.`,
+      scene: { type:'kick', rise, angle: ang }
+    });
+  }
+  // Kick-90s
+  const sz = pick(['½"','¾"']);
+  const stubH = 18;
+  const tu = TAKEUP[sz];
+  const stubMark = stubH - tu;
+  const kickRun = 6;
+  qs.push({
+    type:'kick90', tag:'KICK + 90°',
+    name: 'Kick 90°',
+    task: `${sz} EMT. ${stubH}" stub, 45° kick with 6" rise. Place BOTH marks: stub mark from panel end, kick mark from box end.`,
+    marks: [
+      { label:'KICK',  answer: round2(30 - 6), tolerance: TOLERANCE_IN },
+      { label:'STUB',  answer: stubMark,        tolerance: TOLERANCE_IN }
+    ],
+    formula: `Stub mark = ${stubH} − ${tu} = <strong>${stubMark}"</strong>  |  Kick run = 6 ÷ tan(45°) = <strong>6"</strong>`,
+    formulaStrip: [{ k:`${sz} take-up`, v:`${tu}"` },{ k:'tan(45°)', v:'1.0' }],
+    hint: `Kick mark at ${round2(30-6)}" from box end. Stub mark at ${stubMark}" from panel end.`,
+    scene: { type:'kick90', stubH, kickRun:6, size:sz }
+  });
+  return shuffle(qs).slice(0,6);
+}
+
+function shuffle(a) {
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}
+  return b;
+}
+
+const GENERATORS = {
+  stub: genStubQs, offset: genOffsetQs, box: genBoxQs,
+  saddle3: genSaddle3Qs, saddle4: genSaddle4Qs, kick: genKickQs
+};
+const MODE_LABELS = {
+  stub:'STUB', offset:'OFFSET', box:'BOX OFFSET',
+  saddle3:'SADDLE 3', saddle4:'SADDLE 4', kick:'KICK'
+};
+
+// ══════════════════════════════════════════════════════
+// DRAWING
+// ══════════════════════════════════════════════════════
+
+function getPipeWidth() {
+  return document.getElementById('pipe-row').getBoundingClientRect().width;
+}
+
+function inToX(inches) {
+  return (inches / PIPE_LENGTH_IN) * G.pipeW;
+}
+
+function xToIn(x) {
+  return round2((x / G.pipeW) * PIPE_LENGTH_IN);
+}
+
+function drawPipe() {
+  const c = document.getElementById('pipe-canvas');
+  const w = G.pipeW;
+  c.width = w; c.height = 32;
+  const ctx = c.getContext('2d');
+
+  // Pipe body gradient
+  const g = ctx.createLinearGradient(0,0,0,32);
+  g.addColorStop(0,'#5a6a80');
+  g.addColorStop(0.3,'#8a9bb0');
+  g.addColorStop(0.5,'#c5d5e5');
+  g.addColorStop(0.7,'#8a9bb0');
+  g.addColorStop(1,'#3a4555');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(0,0,w,32,4);
+  ctx.fill();
+
+  // Shine
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();
+  ctx.roundRect(0,5,w,8,3);
+  ctx.fill();
+
+  // End caps
+  ctx.fillStyle = '#2a3545';
+  ctx.fillRect(0,0,8,32);
+  ctx.fillRect(w-8,0,8,32);
+  ctx.fillStyle = '#4a5a70';
+  ctx.fillRect(2,4,4,24);
+  ctx.fillRect(w-6,4,4,24);
+}
+
+function drawRuler() {
+  const c = document.getElementById('ruler-canvas');
+  const w = G.pipeW;
+  c.width = w; c.height = 36;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#1a1c18';
+  ctx.fillRect(0,0,w,36);
+
+  const pixPerIn = w / PIPE_LENGTH_IN;
+
+  for (let i = 0; i <= PIPE_LENGTH_IN; i++) {
+    const x = i * pixPerIn;
+    const isMajor = i % 12 === 0;
+    const isMed = i % 6 === 0;
+    const isSmall = i % 3 === 0;
+
+    if (isMajor) {
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,18); ctx.stroke();
+      ctx.fillStyle = '#ccc';
+      ctx.font = '10px Share Tech Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${i}"`, x, 30);
+    } else if (isMed) {
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,12); ctx.stroke();
+      ctx.fillStyle = '#888';
+      ctx.font = '8px Share Tech Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${i}"`, x, 26);
+    } else if (isSmall) {
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,8); ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,5); ctx.stroke();
+    }
+  }
+}
+
+// ── SCENE DRAWINGS ──
+function drawScene(q) {
+  const c = document.getElementById('scene-canvas');
+  const wrap = document.getElementById('scene-area');
+  const W = wrap.clientWidth || 800;
+  const H = 200;
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+
+  ctx.clearRect(0,0,W,H);
+
+  const sc = q.scene;
+  const type = sc.type;
+
+  // Shared styles
+  function drawStraightPipe(x1,y1,x2,y2,r=8) {
+    const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+    const nx=dy/len, ny=-dx/len;
+    const grad = ctx.createLinearGradient(x1-nx*r,y1-ny*r,x1+nx*r,y1+ny*r);
+    grad.addColorStop(0,'#3a4555');
+    grad.addColorStop(0.3,'#7a8b9a');
+    grad.addColorStop(0.5,'#c5d5e5');
+    grad.addColorStop(0.7,'#7a8b9a');
+    grad.addColorStop(1,'#3a4555');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = r*2;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    // Shine
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = r*0.5;
+    ctx.beginPath(); ctx.moveTo(x1-nx*r*0.4,y1-ny*r*0.4); ctx.lineTo(x2-nx*r*0.4,y2-ny*r*0.4); ctx.stroke();
+  }
+
+  function drawElbow(cx,cy,r,startAngle,endAngle,pipeR=8) {
+    const grad = ctx.createRadialGradient(cx,cy,r-pipeR,cx,cy,r+pipeR);
+    grad.addColorStop(0,'#3a4555');
+    grad.addColorStop(0.4,'#7a8b9a');
+    grad.addColorStop(0.6,'#c5d5e5');
+    grad.addColorStop(1,'#3a4555');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = pipeR*2;
+    ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.arc(cx,cy,r,startAngle,endAngle); ctx.stroke();
+  }
+
+  function drawObstaclePipe(cx,cy,r=14) {
+    const g = ctx.createLinearGradient(cx-r,cy-r,cx-r,cy+r);
+    g.addColorStop(0,'#5a4020');
+    g.addColorStop(0.3,'#c89050');
+    g.addColorStop(0.5,'#f0c070');
+    g.addColorStop(0.7,'#c89050');
+    g.addColorStop(1,'#5a4020');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx,cy-r*0.3,r*0.6,r*0.2,0,0,Math.PI*2); ctx.fill();
+    // Label
+    ctx.fillStyle='#888';
+    ctx.font='bold 11px Share Tech Mono';
+    ctx.textAlign='center';
+    ctx.fillText('pipe',cx,cy+r+14);
+  }
+
+  function drawBox(x,y,w,h) {
+    ctx.strokeStyle='#556';
+    ctx.lineWidth=2;
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(x,y,w,h);
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,255,255,0.03)';
+    ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#556';
+    ctx.font='11px Share Tech Mono';
+    ctx.textAlign='center';
+    ctx.fillText('BOX',x+w/2,y+h/2+4);
+  }
+
+  function drawWall(x,y,h) {
+    ctx.fillStyle='#2a2a2e';
+    ctx.fillRect(x,y,20,h);
+    ctx.strokeStyle='#444';
+    ctx.lineWidth=2;
+    ctx.strokeRect(x,y,20,h);
+    ctx.fillStyle='#555';
+    ctx.font='bold 10px Share Tech Mono';
+    ctx.textAlign='center';
+    ctx.save(); ctx.translate(x+10,y+h/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('WALL',0,4); ctx.restore();
+  }
+
+  function label(text,x,y,col='#f0b429') {
+    ctx.fillStyle=col; ctx.font='bold 11px Share Tech Mono'; ctx.textAlign='center';
+    ctx.fillText(text,x,y);
+  }
+
+  function dim(text,x1,y,x2) {
+    ctx.strokeStyle='#444'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#888'; ctx.font='10px Share Tech Mono'; ctx.textAlign='center';
+    ctx.fillText(text,(x1+x2)/2,y-4);
+  }
+
+  // ─── STUB ───
+  if (type==='stub') {
+    const pY = H-50, wallX = W-60;
+    drawWall(wallX,20,H-20);
+    drawStraightPipe(40,pY,wallX-2,pY);
+    // elbow
+    drawElbow(wallX-2,pY-30,30,Math.PI/2,Math.PI);
+    drawStraightPipe(wallX-32,pY-30,wallX-32,20);
+    // panel
+    ctx.fillStyle='#1a2a1a'; ctx.fillRect(wallX-32-12,20,12,80);
+    ctx.strokeStyle='#4a8a4a'; ctx.lineWidth=1; ctx.strokeRect(wallX-32-12,20,12,80);
+    label('PANEL',wallX-32-6,110,'#4a8a4a');
+    // dim arrow
+    dim(`${sc.height}"`,wallX-32,15,wallX-32,pY);
+    ctx.strokeStyle='#f0b429'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(wallX-32,pY); ctx.lineTo(wallX-32,20);
+    ctx.stroke();
+    label('stub height →',40,pY-15,'#666');
+  }
+
+  // ─── OFFSET ───
+  else if (type==='offset') {
+    const y0 = H-55, rise = sc.rise;
+    const { mult } = OFFSET[sc.angle];
+    const dist = rise * mult;
+    const scale = Math.min(4, (W-120)/dist);
+    const pStart = 50, pEnd = W-50;
+    const y1 = y0 - rise * 6;
+
+    // Obstacle (beam/pipe whatever)
+    ctx.fillStyle='#2a2020';
+    ctx.fillRect((W)/2-20, y1-6, 40, y0-y1+12);
+    ctx.strokeStyle='#553';
+    ctx.lineWidth=1; ctx.strokeRect((W)/2-20, y1-6, 40, y0-y1+12);
+    ctx.fillStyle='#775';
+    ctx.font='10px Share Tech Mono'; ctx.textAlign='center';
+    ctx.fillText('OBSTACLE',(W)/2,H-10);
+
+    // Pipe going in
+    const m1x = pStart + 60, m2x = m1x + dist*scale;
+    drawStraightPipe(pStart,y0,m1x,y0);
+    // First bend going up
+    const elbR = 18;
+    drawStraightPipe(m1x,y0,m2x,y1);
+    drawStraightPipe(m2x,y1,pEnd,y1);
+
+    // Rise dim
+    ctx.strokeStyle='#555'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(m2x+15,y0); ctx.lineTo(m2x+15,y1); ctx.stroke();
+    ctx.setLineDash([]);
+    label(`${sc.rise}" rise`,m2x+35,(y0+y1)/2,'#888');
+
+    // Dist dim
+    ctx.strokeStyle='#f0b42960'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(m1x,y0+20); ctx.lineTo(m2x,y0+20); ctx.stroke();
+    ctx.setLineDash([]);
+    label(`← ${round2(dist)}" apart →`,( m1x+m2x)/2,y0+35,'#f0b429');
+
+    label('Mark 1',m1x,y0-18,'#f0b429');
+    label('Mark 2',m2x,y1-18,'#f0b429');
+  }
+
+  // ─── BOX ───
+  else if (type==='box') {
+    const pY = H/2, boxX = W-120;
+    drawBox(boxX,pY-40,80,80);
+    drawStraightPipe(40,pY,boxX,pY);
+    // offset knuckle
+    ctx.strokeStyle='#f0b42960'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(boxX-60,H-30); ctx.lineTo(boxX-20,H-30); ctx.stroke();
+    ctx.setLineDash([]);
+    label('3–4" apart',boxX-40,H-18,'#888');
+    label('→ flush entry',boxX+10,pY-12,'#888');
+    ctx.strokeStyle='#f0b429'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(boxX-60,pY-8); ctx.lineTo(boxX-60,pY+8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(boxX-20,pY-8); ctx.lineTo(boxX-20,pY+8); ctx.stroke();
+  }
+
+  // ─── SADDLE 3 ───
+  else if (type==='saddle3') {
+    const pY = H-55, obs = sc.obs;
+    const cX = W/2;
+    const riseH = obs * 7;
+    const topY = pY - riseH;
+
+    // obstacle pipe (cross-section circle)
+    drawObstaclePipe(cX, pY - riseH/2, obs*5);
+
+    // conduit path
+    drawStraightPipe(30,pY,cX-60,pY);
+    drawStraightPipe(cX-60,pY,cX,topY-10); // up
+    drawStraightPipe(cX,topY-10,cX+60,pY); // down
+    drawStraightPipe(cX+60,pY,W-30,pY);
+
+    // dim marks
+    label('Outer 1',cX-60,pY-18,'#f0b429');
+    label('Center', cX,topY-28,'#f0b429');
+    label('Outer 2',cX+60,pY-18,'#f0b429');
+    dim('6"',cX-60,pY+30,cX);
+    dim('6"',cX,pY+30,cX+60);
+    label(`${obs}" pipe`,cX,H-8,'#c89050');
+  }
+
+  // ─── SADDLE 4 ───
+  else if (type==='saddle4') {
+    const pY = H-55, w = sc.w, rise = sc.rise;
+    const cX = W/2;
+    const legPx = rise * 10;
+    const widthPx = w * 6;
+
+    const aX = cX - widthPx/2 - legPx;
+    const bX = cX - widthPx/2;
+    const cXr = cX + widthPx/2;
+    const dX = cX + widthPx/2 + legPx;
+    const topY = pY - rise * 8;
+
+    // obstacle
+    ctx.fillStyle='#222'; ctx.strokeStyle='#445'; ctx.lineWidth=2; ctx.setLineDash([]);
+    ctx.fillRect(bX,topY-10,widthPx,pY-topY+10);
+    ctx.strokeRect(bX,topY-10,widthPx,pY-topY+10);
+    label(`${w}" obstacle`,cX,topY-20,'#555');
+
+    drawStraightPipe(30,pY,aX,pY);
+    drawStraightPipe(aX,pY,bX,topY);
+    drawStraightPipe(bX,topY,cXr,topY);
+    drawStraightPipe(cXr,topY,dX,pY);
+    drawStraightPipe(dX,pY,W-30,pY);
+
+    ['A','B','C','D'].forEach((ltr,i)=>{
+      const xs=[aX,bX,cXr,dX];
+      const ys=[pY,topY,topY,pY];
+      label(ltr,xs[i],ys[i]-18,'#f0b429');
+    });
+    dim(`leg=${round2(rise*2)}"`,aX,pY+30,bX);
+    dim(`${w}"`,bX,topY-30,cXr);
+    dim(`leg=${round2(rise*2)}"`,cXr,pY+30,dX);
+  }
+
+  // ─── KICK ───
+  else if (type==='kick') {
+    const pY = H-50, boxY = H-50;
+    const rise = sc.rise;
+    const riseH = rise * 8;
+    const TAN = {'22.5°':0.414,'30°':0.577,'45°':1.0};
+    const t = TAN[sc.angle]||1;
+    const run = rise/t;
+    const runPx = run * 5;
+
+    const boxX = W-80;
+    drawBox(boxX,pY-50,60,60);
+    drawStraightPipe(40,pY,boxX-runPx,pY);
+    drawStraightPipe(boxX-runPx,pY,boxX,pY-riseH);
+    drawStraightPipe(boxX,pY-riseH,boxX,pY-50);
+
+    dim(`${round2(run)}" run`,40,pY+30,boxX-runPx);
+    ctx.strokeStyle='#555'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(boxX+20,pY); ctx.lineTo(boxX+20,pY-riseH); ctx.stroke();
+    ctx.setLineDash([]);
+    label(`${rise}" rise`,boxX+38,(pY+pY-riseH)/2,'#888');
+    label('KICK MARK',boxX-runPx,pY-18,'#f0b429');
+  }
+
+  // ─── KICK 90 ───
+  else if (type==='kick90') {
+    const pY = H-55;
+    const boxX = W-100;
+    const panelX = 60;
+    const kickRunPx = 60;
+    const stubPx = 80;
+
+    drawBox(boxX,pY-30,50,50);
+    ctx.fillStyle='#1a2a1a'; ctx.fillRect(panelX-15,30,14,100);
+    ctx.strokeStyle='#4a8a4a'; ctx.lineWidth=1; ctx.strokeRect(panelX-15,30,14,100);
+    label('PANEL',panelX-8,140,'#4a8a4a');
+
+    drawStraightPipe(panelX,pY,boxX-kickRunPx,pY);
+    drawStraightPipe(boxX-kickRunPx,pY,boxX,pY-30);
+    drawStraightPipe(boxX,pY-30,boxX,pY-50);
+
+    // stub vertical
+    drawStraightPipe(panelX,pY,panelX,30);
+
+    label('KICK',boxX-kickRunPx,pY-18,'#f0b429');
+    label('STUB',panelX+40,pY-40,'#f0b429');
+    dim(`${sc.stubH}"`,panelX-28,30,panelX-28,pY);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// MARKS
+// ══════════════════════════════════════════════════════
+function spawnMarks(q) {
+  const layer = document.getElementById('marks-layer');
+  layer.innerHTML = '';
+  G.marks = [];
+
+  // Spread initial positions so they don't stack
+  const spreadPositions = [15, 25, 35, 50, 65, 75].sort(()=>Math.random()-0.5);
+
+  q.marks.forEach((m, i) => {
+    const startIn = m.fixed ? m.answer : spreadPositions[i] || 10 + i*8;
+    const el = document.createElement('div');
+    el.className = 'mark';
+    el.dataset.label = m.label;
+    el.dataset.inches = `${startIn}"`;
+    el.style.left = inToX(startIn) + 'px';
+    if (m.fixed) {
+      el.style.cursor = 'default';
+      el.style.opacity = '0.5';
+    }
+    layer.appendChild(el);
+
+    const markObj = { id: i, xIn: startIn, el, ...m };
+    G.marks.push(markObj);
+
+    if (!m.fixed) setupMarkDrag(markObj);
+  });
+}
+
+function setupMarkDrag(mark) {
+  const el = mark.el;
+  let dragging = false, startX = 0, startLeft = 0;
+
+  function onDown(e) {
+    if (G.checked) return;
+    dragging = true;
+    el.classList.add('dragging');
+    startX = (e.touches ? e.touches[0].clientX : e.clientX);
+    startLeft = parseFloat(el.style.left) || 0;
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+    const dx = cx - startX;
+    let newLeft = Math.max(0, Math.min(G.pipeW - 3, startLeft + dx));
+    el.style.left = newLeft + 'px';
+    const inches = xToIn(newLeft);
+    mark.xIn = inches;
+    el.dataset.inches = `${inches}"`;
+
+    // Tooltip
+    const tt = document.getElementById('tooltip');
+    tt.style.display = 'block';
+    tt.style.left = (cx + 14) + 'px';
+    tt.style.top = (e.clientY || e.touches[0].clientY) - 30 + 'px';
+    tt.textContent = `${mark.label}: ${inches}"`;
+  }
+
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    document.getElementById('tooltip').style.display = 'none';
+    // Snap to nearest 0.5"
+    const snapped = Math.round(mark.xIn * 2) / 2;
+    mark.xIn = snapped;
+    el.style.left = inToX(snapped) + 'px';
+    el.dataset.inches = `${snapped}"`;
+  }
+
+  el.addEventListener('mousedown', onDown);
+  el.addEventListener('touchstart', onDown, { passive: false });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchend', onUp);
+}
+
+// ══════════════════════════════════════════════════════
+// GAME FLOW
+// ══════════════════════════════════════════════════════
+function startMode(mode) {
+  G.mode = mode;
+  G.questions = GENERATORS[mode]();
+  G.qIdx = 0;
+  G.score = 0;
+  G.streak = 0;
+  G.bestStreak = 0;
+  G.correct = 0;
+  G.checked = false;
+
+  document.getElementById('mode-label').textContent = MODE_LABELS[mode];
+  document.getElementById('h-score').textContent = 0;
+  document.getElementById('h-streak').textContent = '0🔥';
+
+  showScreen('sim');
+  setTimeout(() => {
+    G.pipeW = getPipeWidth();
+    loadQuestion();
+  }, 50);
+}
+
+function loadQuestion() {
+  const q = G.questions[G.qIdx];
+  if (!q) { showResult(); return; }
+
+  G.checked = false;
+  G.hintUsed = false;
+
+  // UI
+  document.getElementById('s-tag').textContent = q.tag;
+  document.getElementById('s-name').textContent = q.name;
+  document.getElementById('s-task').textContent = q.task;
+
+  // Dots
+  const dots = document.getElementById('q-dots');
+  dots.innerHTML = G.questions.map((_, i) =>
+    `<div class="q-dot ${i < G.qIdx ? 'done' : i === G.qIdx ? 'active' : ''}"></div>`
+  ).join('');
+  document.getElementById('q-cnt').textContent = `Question ${G.qIdx+1} of ${G.questions.length}`;
+
+  // Formula strip
+  document.getElementById('formula-strip').innerHTML =
+    q.formulaStrip.map(f => `<div class="f-item"><strong>${f.k}</strong> ${f.v}</div>`).join('');
+
+  // Feedback reset
+  setFeedback('Drag the mark(s) on the pipe to the correct position, then click Check.', '');
+
+  // Draw
+  G.pipeW = getPipeWidth();
+  drawPipe();
+  drawRuler();
+  drawScene(q);
+  spawnMarks(q);
+}
+
+function checkMarks() {
+  if (G.checked) { nextQ(); return; }
+  const q = G.questions[G.qIdx];
+  let allOk = true;
+  let msgs = [];
+
+  G.marks.forEach(m => {
+    if (m.fixed) return;
+    const diff = Math.abs(m.xIn - m.answer);
+    const ok = diff <= m.tolerance;
+    m.el.classList.remove('correct','wrong');
+    m.el.classList.add(ok ? 'correct' : 'wrong');
+    if (!ok) {
+      allOk = false;
+      msgs.push(`${m.label}: you placed ${m.xIn}", correct is ${m.answer}"`);
+    }
+  });
+
+  G.checked = true;
+
+  if (allOk) {
+    G.streak++;
+    G.bestStreak = Math.max(G.bestStreak, G.streak);
+    G.correct++;
+    const pts = 100 * Math.min(3, 1 + (G.streak-1)*0.5) * (G.hintUsed ? 0.5 : 1);
+    G.score += Math.round(pts);
+    document.getElementById('h-score').textContent = G.score;
+    document.getElementById('h-streak').textContent = G.streak + '🔥';
+    setFeedback(`✓ Correct!${G.streak > 1 ? ` ${G.streak}× streak` : ''} +${Math.round(pts)} pts   ${q.formula}`, 'good');
+    popScore(`+${Math.round(pts)}`, true);
+    drawBendResult(q);
+    setTimeout(() => nextQ(), 2200);
+  } else {
+    G.streak = 0;
+    document.getElementById('h-streak').textContent = '0🔥';
+    setFeedback(`✗ Not quite. ${msgs.join(' | ')}   Correct: ${q.formula}`, 'bad');
+    popScore('✗', false);
+  }
+}
+
+function drawBendResult(q) {
+  // Re-draw scene with a "bent" pipe highlight overlay
+  // Just pulse the scene canvas border to indicate success
+  const sa = document.getElementById('scene-area');
+  sa.style.outline = '2px solid var(--green)';
+  sa.style.transition = 'outline 0.3s';
+  setTimeout(() => { sa.style.outline = ''; }, 2000);
+}
+
+function nextQ() {
+  G.qIdx++;
+  if (G.qIdx >= G.questions.length) { showResult(); return; }
+  // Reset scene outline
+  document.getElementById('scene-area').style.outline = '';
+  loadQuestion();
+}
+
+function showHint() {
+  G.hintUsed = true;
+  const q = G.questions[G.qIdx];
+  setFeedback(`💡 ${q.hint}`, 'hint');
+}
+
+function setFeedback(msg, cls) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = 'feedback-box' + (cls ? ' ' + cls : '');
+}
+
+function popScore(text, pos) {
+  const el = document.createElement('div');
+  el.className = 'score-pop';
+  el.style.color = pos ? 'var(--green)' : 'var(--red)';
+  el.style.left = (window.innerWidth/2 - 30) + 'px';
+  el.style.top = (window.innerHeight/2) + 'px';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
+}
+
+// ══════════════════════════════════════════════════════
+// RESULT
+// ══════════════════════════════════════════════════════
+function showResult() {
+  const total = G.questions.length;
+  const acc = Math.round((G.correct / total) * 100);
+  const grade = acc>=90?'A':acc>=75?'B':acc>=60?'C':acc>=50?'D':'F';
+  const ranks = {A:'JOURNEYMAN',B:'SOLID WORK',C:'KEEP DRILLING',D:'NEEDS REVIEW',F:'BACK TO BASICS'};
+  const msgs  = {
+    A:'Clean marks. Your math is dialed in.',
+    B:'Good fundamentals. A few mis-marks — tighten up the formula.',
+    C:'Getting there. Study the reference strip and retry.',
+    D:'Review the bend type and try again.',
+    F:'Study the formulas carefully before retrying.'
+  };
+
+  document.getElementById('r-grade').textContent = grade;
+  document.getElementById('r-grade').className = 'result-big' + (grade==='F'?' fail':'');
+  document.getElementById('r-rank').textContent = ranks[grade];
+  document.getElementById('r-score').textContent = G.score;
+  document.getElementById('r-acc').textContent = acc + '%';
+  document.getElementById('r-streak').textContent = G.bestStreak;
+  document.getElementById('r-msg').textContent = msgs[grade];
+  document.getElementById('result-overlay').classList.add('show');
+}
+
+function closeResult() { document.getElementById('result-overlay').classList.remove('show'); }
+function retryMode() { closeResult(); startMode(G.mode); }
+function goTitle() {
+  closeResult();
+  showScreen('title');
+}
+
+// ══════════════════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ══════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── RESIZE ──
+window.addEventListener('resize', () => {
+  if (document.getElementById('sim').classList.contains('active')) {
+    G.pipeW = getPipeWidth();
+    drawPipe();
+    drawRuler();
+    // reposition marks
+    G.marks.forEach(m => {
+      m.el.style.left = inToX(m.xIn) + 'px';
+    });
+    const q = G.questions[G.qIdx];
+    if (q) drawScene(q);
+  }
+});
+</script>
+</body>
+</html>
